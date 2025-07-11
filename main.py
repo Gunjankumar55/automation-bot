@@ -1,29 +1,50 @@
 from flask import Flask, request, jsonify
 import subprocess
+import os
 
 app = Flask(__name__)
 
-@app.route("/process", methods=["POST"])
-def process():
+@app.route('/process', methods=['POST'])
+def process_video():
     data = request.get_json()
-    video_id = data.get("videoId")
-    title = data.get("title", "untitled")
+    if not data or 'videoId' not in data:
+        return jsonify({"error": "Missing 'videoId'"}), 400
 
-    if not video_id:
-        return jsonify({"error": "Missing videoId"}), 400
-
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
-    input_file = "input.mp4"
-    output_file = "output.mp4"
+    video_id = data['videoId']
+    title = data.get('title', 'Untitled')
+    youtube_url = f"https://www.youtube.com/watch?v={video_id}"
 
     try:
-        subprocess.run(["yt-dlp", "-f", "best", "-o", input_file, video_url], check=True)
-        subprocess.run(["ffmpeg", "-i", input_file, "-vf", "scale=720:-1", output_file], check=True)
-        return jsonify({"status": "success", "output": output_file})
-    except subprocess.CalledProcessError as e:
-        return jsonify({"error": str(e)}), 500
+        # Download video using yt-dlp
+        download_cmd = [
+            "yt-dlp",
+            "-f", "mp4",
+            "-o", "input.%(ext)s",
+            youtube_url
+        ]
+        result = subprocess.run(download_cmd, check=True, capture_output=True)
+        print(result.stdout.decode())
 
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+        # Find downloaded file (assumes mp4 format)
+        input_file = "input.mp4"
+        if not os.path.exists(input_file):
+            input_file = "input.webm"  # fallback
+        if not os.path.exists(input_file):
+            return jsonify({"error": "Downloaded file not found"}), 500
+
+        # Process with ffmpeg: resize to 720 width, keep aspect ratio
+        output_file = "output.mp4"
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-i", input_file,
+            "-vf", "scale=720:-1",
+            "-y",  # Overwrite if exists
+            output_file
+        ]
+        subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+
+        return jsonify({"status": "success", "output": output_file}), 200
+
+    except subprocess.CalledProcessError as e:
+        return jsonify({
+            "status":
