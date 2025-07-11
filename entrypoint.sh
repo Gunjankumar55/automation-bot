@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-mkdir -p /video
-ffmpeg -i /video/input.mp4 -vf "scale=720:-2" /video/output.mp4
+echo "Starting automatic video processing..."
+
+# Example YouTube URL to process
+python3 process.py "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
