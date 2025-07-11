@@ -1,6 +1,16 @@
-FROM jrottenberg/ffmpeg:4.4-alpine
+FROM python:3.11-slim
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Install FFmpeg
+RUN apt update && apt install -y ffmpeg
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Set working directory
+WORKDIR /app
+
+# Copy files
+COPY . .
+
+# Install dependencies
+RUN pip install -r requirements.txt
+
+# Run the script
+ENTRYPOINT ["bash", "entrypoint.sh"]
