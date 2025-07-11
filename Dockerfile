@@ -8,14 +8,17 @@ RUN apt-get update && apt-get install -y ffmpeg curl && \
 # Set working directory
 WORKDIR /app
 
-# Copy all project files (main.py, cookies.txt, etc.)
+# Copy all project files
 COPY . .
 
 # Set Flask app
 ENV FLASK_APP=main.py
 
-# Expose port (for Railway)
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
+
+# Expose port for Railway
 EXPOSE 5000
 
-# Start Flask server
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+# Run entrypoint
+ENTRYPOINT ["./entrypoint.sh"]
