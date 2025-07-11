@@ -33,8 +33,9 @@ def process_video():
             "-o", "input.%(ext)s",
             youtube_url
         ]
-        result = subprocess.run(download_cmd, check=True, capture_output=True)
-        print(result.stdout.decode())
+        result = subprocess.run(download_cmd, check=True, capture_output=True, text=True)
+        print("yt-dlp STDOUT:", result.stdout)
+        print("yt-dlp STDERR:", result.stderr)
 
         # Find downloaded file
         input_file = None
@@ -57,16 +58,15 @@ def process_video():
             output_file
         ]
         ffmpeg_result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
-print("FFmpeg STDOUT:", ffmpeg_result.stdout)
-print("FFmpeg STDERR:", ffmpeg_result.stderr)
+        print("FFmpeg STDOUT:", ffmpeg_result.stdout)
+        print("FFmpeg STDERR:", ffmpeg_result.stderr)
 
-if ffmpeg_result.returncode != 0:
-    return jsonify({
-        "status": "error",
-        "message": "FFmpeg failed",
-        "stderr": ffmpeg_result.stderr
-    }), 500
-
+        if ffmpeg_result.returncode != 0:
+            return jsonify({
+                "status": "error",
+                "message": "FFmpeg failed",
+                "stderr": ffmpeg_result.stderr
+            }), 500
 
         return jsonify({"status": "success", "output": output_file}), 200
 
