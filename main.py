@@ -1,9 +1,7 @@
 from flask import Flask, request, jsonify
-import numpy as np
 import subprocess
 import os
 import openai
-import tempfile
 
 app = Flask(__name__)
 
@@ -44,7 +42,7 @@ def process_video():
         if not input_file:
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        print("🧠 Extracting audio for OpenAI Whisper API...")
+        print("🧠 Extracting audio for Whisper API...")
 
         # Step 3: Extract audio
         audio_file = "audio.mp3"
@@ -52,23 +50,18 @@ def process_video():
             "ffmpeg", "-i", input_file, "-vn", "-acodec", "libmp3lame", "-y", audio_file
         ], check=True)
 
-        print("🎙 Transcribing via OpenAI Whisper API...")
+        print("🎙 Transcribing via Whisper API...")
         with open(audio_file, "rb") as audio:
-            transcript = openai.Audio.transcribe("whisper-1", audio)
+            transcript = openai.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio,
+                response_format="text"
+            )
 
         # Step 4: Save .srt subtitles
         srt_path = "subtitles.srt"
         with open(srt_path, "w", encoding="utf-8") as f:
-            segments = transcript.get("segments", [])
-            if not segments:  # fallback if segments not present
-                text = transcript.get("text", "")
-                f.write("1\n00:00:00,000 --> 00:00:10,000\n" + text + "\n")
-            else:
-                for i, segment in enumerate(segments):
-                    start = format_time(segment["start"])
-                    end = format_time(segment["end"])
-                    text = segment["text"].strip()
-                    f.write(f"{i+1}\n{start} --> {end}\n{text}\n\n")
+            f.write("1\n00:00:00,000 --> 00:00:10,000\n" + transcript + "\n")
 
         print("✅ Subtitles saved to:", srt_path)
 
@@ -100,13 +93,6 @@ def process_video():
             "status": "error",
             "message": str(e)
         }), 500
-
-def format_time(seconds):
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int(seconds % 60)
-    ms = int((seconds % 1) * 1000)
-    return f"{h:02}:{m:02}:{s:02},{ms:03}"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
