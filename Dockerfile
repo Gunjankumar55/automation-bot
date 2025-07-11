@@ -1,35 +1,24 @@
 FROM python:3.10-slim
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    libsndfile1 \
-    curl \
-    fontconfig \
-    gcc \
-    g++ \
-    python3-dev \
-    build-essential && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg libsndfile1 curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Python libraries
+# Install Python packages
 RUN pip install --no-cache-dir \
-    flask \
-    yt-dlp \
-    openai==1.14.2 \
-    numpy
+    torch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir \
+    flask yt-dlp openai==0.28.1 openai-whisper numpy
 
 # Set working directory
 WORKDIR /app
 
-# Copy all files into container
+# Copy your code
 COPY . .
 
-# Fix entrypoint permissions (if needed)
-RUN chmod +x entrypoint.sh || true
+# Make entrypoint executable
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
-# Expose port
 EXPOSE 5000
-
-# Run app
-CMD ["python", "main.py"]
+ENTRYPOINT ["./entrypoint.sh"]
