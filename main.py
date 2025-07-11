@@ -4,6 +4,14 @@ import os
 
 app = Flask(__name__)
 
+@app.route('/upload-cookies', methods=['POST'])
+def upload_cookies():
+    file = request.files.get('file')
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
+    file.save('/app/cookies.txt')  # Save over existing
+    return jsonify({"status": "cookies uploaded"}), 200
+
 @app.route('/process', methods=['POST'])
 def process_video():
     data = request.get_json()
@@ -20,7 +28,7 @@ def process_video():
         # Download using yt-dlp with cookies
         download_cmd = [
             "yt-dlp",
-            "--cookies", "cookies.txt",  # use your cookies!
+            "--cookies", "cookies.txt",
             "-f", "bestvideo+bestaudio/best",
             "-o", "input.%(ext)s",
             youtube_url
@@ -37,7 +45,7 @@ def process_video():
         if not input_file:
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        # Transcode to standard mp4 with audio
+        # Transcode to standard mp4
         output_file = "output.mp4"
         ffmpeg_cmd = [
             "ffmpeg",
