@@ -14,10 +14,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python libraries
 RUN pip install --no-cache-dir \
-    numpy \
     flask \
     yt-dlp \
-    openai
+    openai==1.14.2 \
+    numpy
 
 # Set working directory
 WORKDIR /app
@@ -25,11 +25,11 @@ WORKDIR /app
 # Copy all files into container
 COPY . .
 
-# Fix entrypoint permissions
-RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
+# Fix entrypoint permissions (if needed)
+RUN chmod +x entrypoint.sh || true
 
 # Expose port
 EXPOSE 5000
 
 # Run app
-ENTRYPOINT ["./entrypoint.sh"]
+CMD ["python", "main.py"]
