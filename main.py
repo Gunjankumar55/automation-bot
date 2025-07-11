@@ -51,7 +51,7 @@ def process_video():
         ffmpeg_cmd = [
             "ffmpeg",
             "-i", input_file,
-            "-vf", "scale=720:-1",
+            "-vf", "scale=720:trunc(ih*720/iw/2)*2",
             "-c:v", "libx264",
             "-c:a", "aac",
             "-y",
