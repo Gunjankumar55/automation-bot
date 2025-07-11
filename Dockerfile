@@ -1,15 +1,20 @@
-FROM ubuntu:22.04
+FROM python:3.10-slim
 
-# Install dependencies
-RUN apt-get update && apt-get install -y ffmpeg curl unzip
+# Install ffmpeg and yt-dlp
+RUN apt-get update && apt-get install -y ffmpeg curl && \
+    pip install flask yt-dlp
 
-# Copy script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Create working directory
+WORKDIR /app
 
-# Create folder to store videos (this will be handled by Railway volumes later)
-RUN mkdir -p /videos
+# Copy files
+COPY main.py .
 
-WORKDIR /videos
+# Set environment variable for Flask
+ENV FLASK_APP=main.py
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Expose port for Railway
+EXPOSE 5000
+
+# Start the server
+CMD ["flask", "run", "--host=0.0.0.0", "--port=${PORT}"]
