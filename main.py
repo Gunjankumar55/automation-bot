@@ -2,9 +2,13 @@ from flask import Flask, request, jsonify
 import numpy as np
 import subprocess
 import os
-import whisper
+import openai
+import tempfile
 
 app = Flask(__name__)
+
+# Set your OpenAI API key securely
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @app.route('/upload-cookies', methods=['POST'])
 def upload_cookies():
@@ -33,30 +37,42 @@ def process_video():
             "-f", "bestvideo+bestaudio/best",
             "-o", "input.%(ext)s", youtube_url
         ]
-        result = subprocess.run(download_cmd, check=True, capture_output=True, text=True)
-        print("YTDLP STDOUT:", result.stdout)
-        print("YTDLP STDERR:", result.stderr)
+        subprocess.run(download_cmd, check=True)
 
         # Step 2: Find downloaded file
         input_file = next((f for f in ["input.mp4", "input.webm", "input.mkv"] if os.path.exists(f)), None)
         if not input_file:
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        # Step 3: Transcribe audio
-        print("🧠 Transcribing with Whisper...")
-        model = whisper.load_model("base")
-        result = model.transcribe(input_file)
+        print("🧠 Extracting audio for OpenAI Whisper API...")
+
+        # Step 3: Extract audio
+        audio_file = "audio.mp3"
+        subprocess.run([
+            "ffmpeg", "-i", input_file, "-vn", "-acodec", "libmp3lame", "-y", audio_file
+        ], check=True)
+
+        print("🎙 Transcribing via OpenAI Whisper API...")
+        with open(audio_file, "rb") as audio:
+            transcript = openai.Audio.transcribe("whisper-1", audio)
+
+        # Step 4: Save .srt subtitles
         srt_path = "subtitles.srt"
         with open(srt_path, "w", encoding="utf-8") as f:
-            for i, segment in enumerate(result["segments"]):
-                start = segment["start"]
-                end = segment["end"]
-                text = segment["text"].strip()
-                f.write(f"{i+1}\n")
-                f.write(f"{format_time(start)} --> {format_time(end)}\n{text}\n\n")
+            segments = transcript.get("segments", [])
+            if not segments:  # fallback if segments not present
+                text = transcript.get("text", "")
+                f.write("1\n00:00:00,000 --> 00:00:10,000\n" + text + "\n")
+            else:
+                for i, segment in enumerate(segments):
+                    start = format_time(segment["start"])
+                    end = format_time(segment["end"])
+                    text = segment["text"].strip()
+                    f.write(f"{i+1}\n{start} --> {end}\n{text}\n\n")
+
         print("✅ Subtitles saved to:", srt_path)
 
-        # Step 4: Burn subtitles
+        # Step 5: Burn subtitles
         captioned_file = "captioned.mp4"
         subprocess.run([
             "ffmpeg", "-i", input_file,
@@ -64,7 +80,7 @@ def process_video():
             "-c:a", "aac", "-c:v", "libx264", "-y", captioned_file
         ], check=True)
 
-        # Step 5: Loop video 2x
+        # Step 6: Loop video
         output_file = "output.mp4"
         subprocess.run([
             "ffmpeg", "-stream_loop", "1", "-i", captioned_file,
@@ -76,10 +92,9 @@ def process_video():
     except subprocess.CalledProcessError as e:
         return jsonify({
             "status": "error",
-            "stderr": e.stderr if e.stderr else "",
+            "stderr": e.stderr,
             "message": str(e)
         }), 500
-
     except Exception as e:
         return jsonify({
             "status": "error",
