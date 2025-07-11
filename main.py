@@ -15,9 +15,10 @@ def process_video():
     youtube_url = f"https://www.youtube.com/watch?v={video_id}"
 
     try:
-        # Download video using yt-dlp
+        # Download video using yt-dlp with cookies
         download_cmd = [
             "yt-dlp",
+            "--cookies", "cookies.txt",
             "-f", "mp4",
             "-o", "input.%(ext)s",
             youtube_url
@@ -25,20 +26,20 @@ def process_video():
         result = subprocess.run(download_cmd, check=True, capture_output=True)
         print(result.stdout.decode())
 
-        # Find downloaded file (assumes mp4 format)
+        # Check for downloaded file
         input_file = "input.mp4"
         if not os.path.exists(input_file):
-            input_file = "input.webm"  # fallback
+            input_file = "input.webm"
         if not os.path.exists(input_file):
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        # Process with ffmpeg: resize to 720 width, keep aspect ratio
+        # Process with ffmpeg: resize to 720 width
         output_file = "output.mp4"
         ffmpeg_cmd = [
             "ffmpeg",
             "-i", input_file,
             "-vf", "scale=720:-1",
-            "-y",  # Overwrite if exists
+            "-y",
             output_file
         ]
         subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
