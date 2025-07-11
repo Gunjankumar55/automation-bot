@@ -16,7 +16,7 @@ RUN apt-get update && \
 # Install Python dependencies
 # Install standard PyPI packages first
 RUN pip install --no-cache-dir \
-    numpy \
+    numpy==1.26.4 \
     flask \
     yt-dlp
 
