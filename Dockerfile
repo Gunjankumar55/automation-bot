@@ -1,17 +1,15 @@
-# Use lightweight FFmpeg image
-FROM jrottenberg/ffmpeg:4.4-ubuntu
+FROM ubuntu:22.04
 
-# Set working directory
-WORKDIR /app
+# Install dependencies
+RUN apt-get update && apt-get install -y ffmpeg curl unzip
 
-# Copy script into container
-COPY entrypoint.sh /app/entrypoint.sh
+# Copy script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Make script executable
-RUN chmod +x /app/entrypoint.sh
+# Create folder to store videos (this will be handled by Railway volumes later)
+RUN mkdir -p /videos
 
-# Create and mount videos directory
-VOLUME ["/videos"]
+WORKDIR /videos
 
-# Run the script automatically
-CMD ["/app/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
