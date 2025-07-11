@@ -1,12 +1,9 @@
 from flask import Flask, request, jsonify
 import subprocess
 import os
-import openai
+import whisper
 
 app = Flask(__name__)
-
-# ✅ Set OpenAI API key from env variable (must be set in Railway)
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @app.route('/upload-cookies', methods=['POST'])
 def upload_cookies():
@@ -28,44 +25,37 @@ def process_video():
 
     try:
         print(f"▶ Downloading: {youtube_url}")
-
-        # Step 1: Download the YouTube video using yt-dlp
-        download_cmd = [
+        subprocess.run([
             "yt-dlp", "--cookies", "cookies.txt",
             "-f", "bestvideo+bestaudio/best",
             "-o", "input.%(ext)s", youtube_url
-        ]
-        subprocess.run(download_cmd, check=True)
+        ], check=True)
 
-        # Step 2: Detect the downloaded file
         input_file = next((f for f in ["input.mp4", "input.webm", "input.mkv"] if os.path.exists(f)), None)
         if not input_file:
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        print("🧠 Extracting audio for Whisper...")
-
-        # Step 3: Extract audio as MP3 for transcription
-        audio_file = "audio.mp3"
+        print("🧠 Extracting audio...")
+        audio_file = "audio.wav"
         subprocess.run([
-            "ffmpeg", "-i", input_file, "-vn", "-acodec", "libmp3lame", "-y", audio_file
+            "ffmpeg", "-i", input_file,
+            "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
+            "-y", audio_file
         ], check=True)
 
-        print("🎙 Transcribing with Whisper API...")
-        with open(audio_file, "rb") as audio:
-            transcript = openai.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio,
-                response_format="text"
-            )
+        print("🧠 Transcribing using local Whisper...")
+        model = whisper.load_model("base")  # You can also try "small", "medium", "large"
+        result = model.transcribe(audio_file)
 
-        # Step 4: Write dummy SRT with full transcript
         srt_path = "subtitles.srt"
         with open(srt_path, "w", encoding="utf-8") as f:
-            f.write("1\n00:00:00,000 --> 00:00:10,000\n" + transcript + "\n")
+            for i, seg in enumerate(result["segments"]):
+                f.write(f"{i+1}\n")
+                f.write(f"{format_time(seg['start'])} --> {format_time(seg['end'])}\n")
+                f.write(f"{seg['text'].strip()}\n\n")
 
-        print("✅ Subtitles saved:", srt_path)
+        print("✅ Subtitles created")
 
-        # Step 5: Burn subtitles into the video
         captioned_file = "captioned.mp4"
         subprocess.run([
             "ffmpeg", "-i", input_file,
@@ -73,14 +63,13 @@ def process_video():
             "-c:a", "aac", "-c:v", "libx264", "-y", captioned_file
         ], check=True)
 
-        # Step 6: Loop video 2x for hook effect
         output_file = "output.mp4"
         subprocess.run([
             "ffmpeg", "-stream_loop", "1", "-i", captioned_file,
             "-c", "copy", "-y", output_file
         ], check=True)
 
-        print("✅ Video processed successfully.")
+        print("✅ Video processed successfully")
         return jsonify({"status": "success", "output": output_file}), 200
 
     except subprocess.CalledProcessError as e:
@@ -91,11 +80,14 @@ def process_video():
         }), 500
 
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-# ✅ Don't forget to run the Flask app!
+def format_time(seconds):
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds % 1) * 1000)
+    return f"{h:02}:{m:02}:{s:02},{ms:03}"
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
