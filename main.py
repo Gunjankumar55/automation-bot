@@ -11,33 +11,37 @@ def process_video():
         return jsonify({"error": "Missing 'videoId'"}), 400
 
     video_id = data['videoId']
-    title = data.get('title', 'Untitled')
     youtube_url = f"https://www.youtube.com/watch?v={video_id}"
 
     try:
-        # Download video using yt-dlp with cookies
+        # Download best video+audio using yt-dlp with cookies
         download_cmd = [
             "yt-dlp",
-            "-f", "mp4",
+            "--cookies", "cookies.txt",
+            "-f", "bv*+ba/b",
             "-o", "input.%(ext)s",
             youtube_url
         ]
         result = subprocess.run(download_cmd, check=True, capture_output=True)
         print(result.stdout.decode())
 
-        # Check for downloaded file
-        input_file = "input.mp4"
-        if not os.path.exists(input_file):
-            input_file = "input.webm"
-        if not os.path.exists(input_file):
+        # Check if file exists
+        input_file = None
+        for ext in ['mp4', 'mkv', 'webm']:
+            possible_file = f"input.{ext}"
+            if os.path.exists(possible_file):
+                input_file = possible_file
+                break
+
+        if not input_file:
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        # Process with ffmpeg: resize to 720 width
+        # Process with FFmpeg to 9:16 format for Shorts
         output_file = "output.mp4"
         ffmpeg_cmd = [
             "ffmpeg",
             "-i", input_file,
-            "-vf", "scale=720:-1",
+            "-vf", "scale=720:1280,setsar=1",
             "-y",
             output_file
         ]
@@ -53,7 +57,4 @@ def process_video():
         }), 500
 
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
