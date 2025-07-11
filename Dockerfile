@@ -1,16 +1,17 @@
-FROM python:3.11-slim
-
-# Install FFmpeg
-RUN apt update && apt install -y ffmpeg
+# Use lightweight FFmpeg image
+FROM jrottenberg/ffmpeg:4.4-ubuntu
 
 # Set working directory
 WORKDIR /app
 
-# Copy files
-COPY . .
+# Copy script into container
+COPY entrypoint.sh /app/entrypoint.sh
 
-# Install dependencies
-RUN pip install -r requirements.txt
+# Make script executable
+RUN chmod +x /app/entrypoint.sh
 
-# Run the script
-ENTRYPOINT ["bash", "entrypoint.sh"]
+# Create and mount videos directory
+VOLUME ["/videos"]
+
+# Run the script automatically
+CMD ["/app/entrypoint.sh"]
