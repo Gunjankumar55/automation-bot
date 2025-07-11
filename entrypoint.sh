@@ -1,4 +1,3 @@
 #!/bin/bash
-
-echo "Starting Flask app..."
-python3 main.py
+echo "✅ Starting Python backend..."
+exec python3 main.py
