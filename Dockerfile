@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Install system dependencies
+# Install system dependencies for ffmpeg, whisper, numpy, etc.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ffmpeg \
@@ -13,7 +13,11 @@ RUN apt-get update && \
         build-essential && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install compatible Python dependencies
+# Set Python env vars for reliable builds
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Install compatible Python packages
 RUN pip install --no-cache-dir \
     numpy==1.26.4 \
     flask \
@@ -28,14 +32,14 @@ RUN pip install --no-cache-dir \
 # Set working directory
 WORKDIR /app
 
-# Copy all files (main.py, entrypoint.sh, etc.)
+# Copy source code
 COPY . .
 
-# Fix line endings and make entrypoint executable
+# Ensure entrypoint.sh is Unix-formatted and executable
 RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 # Expose Flask port
 EXPOSE 5000
 
-# Run Flask app
+# Run the app
 ENTRYPOINT ["./entrypoint.sh"]
