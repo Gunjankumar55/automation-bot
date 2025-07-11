@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+import numpy as np
 import subprocess
 import os
 import whisper
