@@ -8,14 +8,14 @@ RUN apt-get update && apt-get install -y ffmpeg curl && \
 # Set working directory
 WORKDIR /app
 
-# Copy all project files (main.py, etc.)
+# Copy all project files (main.py, cookies.txt, etc.)
 COPY . .
 
-# Tell Flask which app to run
+# Set Flask app
 ENV FLASK_APP=main.py
 
-# Expose port (Railway maps this automatically)
+# Expose port (for Railway)
 EXPOSE 5000
 
-# Run the Flask server
+# Start Flask server
 CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
