@@ -9,7 +9,7 @@ def upload_cookies():
     file = request.files.get('file')
     if not file:
         return jsonify({"error": "No file uploaded"}), 400
-    file.save('/app/cookies.txt')  # Save over existing
+    file.save('/app/cookies.txt')  # Save or overwrite
     return jsonify({"status": "cookies uploaded"}), 200
 
 @app.route('/process', methods=['POST'])
@@ -33,9 +33,9 @@ def process_video():
             "-o", "input.%(ext)s",
             youtube_url
         ]
-        result = subprocess.run(download_cmd, check=True, capture_output=True, text=True)
-        print("yt-dlp STDOUT:", result.stdout)
-        print("yt-dlp STDERR:", result.stderr)
+        result = subprocess.run(download_cmd, check=True, capture_output=True)
+        print("yt-dlp STDOUT:", result.stdout.decode())
+        print("yt-dlp STDERR:", result.stderr.decode())
 
         # Find downloaded file
         input_file = None
@@ -46,7 +46,7 @@ def process_video():
         if not input_file:
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        # Transcode to standard mp4
+        # Transcode to 720p mp4 with even height (safe for libx264)
         output_file = "output.mp4"
         ffmpeg_cmd = [
             "ffmpeg",
