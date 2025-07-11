@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Install required system dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsndfile1 \
@@ -9,38 +9,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     python3-dev \
-    build-essential \
- && apt-get clean && rm -rf /var/lib/apt/lists/*
+    build-essential && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Pin NumPy to compatible version BEFORE torch/whisper
-RUN pip install --no-cache-dir numpy==1.26.4
-
-# Install other Python dependencies
+# Install Python libraries
 RUN pip install --no-cache-dir \
+    numpy \
     flask \
-    yt-dlp
-
-# Install PyTorch CPU-only versions (use correct index)
-RUN pip install --no-cache-dir \
-    torch==2.2.2 \
-    torchvision==0.17.2 \
-    torchaudio==2.2.2 \
-    --index-url https://download.pytorch.org/whl/cpu
-
-# Install Whisper
-RUN pip install --no-cache-dir openai-whisper
+    yt-dlp \
+    openai
 
 # Set working directory
 WORKDIR /app
 
-# Copy all project files
+# Copy all files into container
 COPY . .
 
-# Fix line endings + permission on entrypoint.sh
+# Fix entrypoint permissions
 RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
-# Expose Flask app port
+# Expose port
 EXPOSE 5000
 
-# Run Flask app via entrypoint
+# Run app
 ENTRYPOINT ["./entrypoint.sh"]
