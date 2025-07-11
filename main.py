@@ -11,37 +11,40 @@ def process_video():
         return jsonify({"error": "Missing 'videoId'"}), 400
 
     video_id = data['videoId']
+    title = data.get('title', 'Untitled')
     youtube_url = f"https://www.youtube.com/watch?v={video_id}"
 
     try:
-        # Download best video+audio using yt-dlp with cookies
+        print(f"▶ Downloading: {youtube_url}")
+
+        # Download using yt-dlp with cookies
         download_cmd = [
             "yt-dlp",
-            "--cookies", "cookies.txt",
-            "-f", "bv*+ba/b",
+            "--cookies", "cookies.txt",  # use your cookies!
+            "-f", "bestvideo+bestaudio/best",
             "-o", "input.%(ext)s",
             youtube_url
         ]
         result = subprocess.run(download_cmd, check=True, capture_output=True)
         print(result.stdout.decode())
 
-        # Check if file exists
+        # Find downloaded file
         input_file = None
-        for ext in ['mp4', 'mkv', 'webm']:
-            possible_file = f"input.{ext}"
-            if os.path.exists(possible_file):
-                input_file = possible_file
+        for ext in ['mp4', 'webm', 'mkv']:
+            if os.path.exists(f"input.{ext}"):
+                input_file = f"input.{ext}"
                 break
-
         if not input_file:
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        # Process with FFmpeg to 9:16 format for Shorts
+        # Transcode to standard mp4 with audio
         output_file = "output.mp4"
         ffmpeg_cmd = [
             "ffmpeg",
             "-i", input_file,
-            "-vf", "scale=720:1280,setsar=1",
+            "-vf", "scale=720:-1",
+            "-c:v", "libx264",
+            "-c:a", "aac",
             "-y",
             output_file
         ]
@@ -57,4 +60,10 @@ def process_video():
         }), 500
 
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
