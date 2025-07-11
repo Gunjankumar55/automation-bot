@@ -47,4 +47,13 @@ def process_video():
 
     except subprocess.CalledProcessError as e:
         return jsonify({
-            "status":
+            "status": "error",
+            "message": str(e),
+            "stderr": e.stderr.decode() if e.stderr else ""
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
