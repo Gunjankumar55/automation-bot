@@ -18,7 +18,6 @@ def process_video():
         # Download video using yt-dlp with cookies
         download_cmd = [
             "yt-dlp",
-            "--cookies", "cookies.txt",
             "-f", "mp4",
             "-o", "input.%(ext)s",
             youtube_url
