@@ -10,8 +10,11 @@ WORKDIR /app
 # Copy Flask app
 COPY main.py .
 
+# Tell Flask which app to run
+ENV FLASK_APP=main.py
+
 # Expose port for Railway
 EXPOSE 5000
 
-# Start Flask app
+# Start the Flask server
 CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
