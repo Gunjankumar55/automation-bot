@@ -9,7 +9,7 @@ def upload_cookies():
     file = request.files.get('file')
     if not file:
         return jsonify({"error": "No file uploaded"}), 400
-    file.save('/app/cookies.txt')  # Save or overwrite
+    file.save('/app/cookies.txt')  # Save/overwrite existing
     return jsonify({"status": "cookies uploaded"}), 200
 
 @app.route('/process', methods=['POST'])
@@ -19,7 +19,6 @@ def process_video():
         return jsonify({"error": "Missing 'videoId'"}), 400
 
     video_id = data['videoId']
-    title = data.get('title', 'Untitled')
     youtube_url = f"https://www.youtube.com/watch?v={video_id}"
 
     try:
@@ -33,9 +32,9 @@ def process_video():
             "-o", "input.%(ext)s",
             youtube_url
         ]
-        result = subprocess.run(download_cmd, check=True, capture_output=True)
-        print("yt-dlp STDOUT:", result.stdout.decode())
-        print("yt-dlp STDERR:", result.stderr.decode())
+        result = subprocess.run(download_cmd, check=True, capture_output=True, text=True)
+        print("yt-dlp STDOUT:", result.stdout)
+        print("yt-dlp STDERR:", result.stderr)
 
         # Find downloaded file
         input_file = None
@@ -46,12 +45,12 @@ def process_video():
         if not input_file:
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        # Transcode to 720p mp4 with even height (safe for libx264)
+        # Transcode with ffmpeg
         output_file = "output.mp4"
         ffmpeg_cmd = [
             "ffmpeg",
             "-i", input_file,
-            "-vf", "scale=720:trunc(ih*720/iw/2)*2",
+            "-vf", "scale=720:-1",
             "-c:v", "libx264",
             "-c:a", "aac",
             "-y",
@@ -74,7 +73,7 @@ def process_video():
         return jsonify({
             "status": "error",
             "message": str(e),
-            "stderr": e.stderr.decode() if e.stderr else ""
+            "stderr": e.stderr if e.stderr else ""
         }), 500
 
     except Exception as e:
