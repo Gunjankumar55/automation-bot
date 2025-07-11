@@ -9,7 +9,7 @@ def upload_cookies():
     file = request.files.get('file')
     if not file:
         return jsonify({"error": "No file uploaded"}), 400
-    file.save('/app/cookies.txt')  # Save/overwrite existing
+    file.save('/app/cookies.txt')  # Save over existing cookies
     return jsonify({"status": "cookies uploaded"}), 200
 
 @app.route('/process', methods=['POST'])
@@ -19,12 +19,13 @@ def process_video():
         return jsonify({"error": "Missing 'videoId'"}), 400
 
     video_id = data['videoId']
+    title = data.get('title', 'Untitled')
     youtube_url = f"https://www.youtube.com/watch?v={video_id}"
 
     try:
         print(f"▶ Downloading: {youtube_url}")
 
-        # Download using yt-dlp with cookies
+        # Step 1: Download video using yt-dlp with cookies
         download_cmd = [
             "yt-dlp",
             "--cookies", "cookies.txt",
@@ -33,10 +34,10 @@ def process_video():
             youtube_url
         ]
         result = subprocess.run(download_cmd, check=True, capture_output=True, text=True)
-        print("yt-dlp STDOUT:", result.stdout)
-        print("yt-dlp STDERR:", result.stderr)
+        print("YTDLP STDOUT:", result.stdout)
+        print("YTDLP STDERR:", result.stderr)
 
-        # Find downloaded file
+        # Step 2: Find the downloaded file
         input_file = None
         for ext in ['mp4', 'webm', 'mkv']:
             if os.path.exists(f"input.{ext}"):
@@ -45,12 +46,12 @@ def process_video():
         if not input_file:
             return jsonify({"error": "Downloaded file not found"}), 500
 
-        # Transcode with ffmpeg
+        # Step 3: Convert to MP4 with 720p width and height divisible by 2
         output_file = "output.mp4"
         ffmpeg_cmd = [
             "ffmpeg",
             "-i", input_file,
-            "-vf", "scale=720:-1",
+            "-vf", "scale=720:-2",
             "-c:v", "libx264",
             "-c:a", "aac",
             "-y",
@@ -73,7 +74,7 @@ def process_video():
         return jsonify({
             "status": "error",
             "message": str(e),
-            "stderr": e.stderr if e.stderr else ""
+            "stderr": e.stderr if hasattr(e, 'stderr') else "No stderr available"
         }), 500
 
     except Exception as e:
