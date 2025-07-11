@@ -1,24 +1,22 @@
 FROM python:3.10-slim
 
-# Install ffmpeg and yt-dlp
-RUN apt-get update && apt-get install -y ffmpeg curl && \
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y ffmpeg curl && \
     pip install --no-cache-dir flask yt-dlp && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy all project files
+# Copy everything including cookies
 COPY . .
 
-# Set Flask app
-ENV FLASK_APP=main.py
-
-# Make entrypoint executable
+# Make entrypoint script executable
 RUN chmod +x entrypoint.sh
 
-# Expose port for Railway
+# Expose Railway port
 EXPOSE 5000
 
-# Run entrypoint
+# Run the app
 ENTRYPOINT ["./entrypoint.sh"]
